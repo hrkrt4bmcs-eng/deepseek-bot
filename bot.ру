@@ -1,0 +1,46 @@
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
+)
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
+
+@dp.message_handler()
+async def handle_message(message: types.Message):
+    user_text = message.text
+    prompt = f"""
+    Ты аналитическая система.
+    Дай прогноз по теме: {user_text}
+    Формат:
+    1. Анализ ситуации
+    2. Прогноз
+    3. Риски
+    4. Вероятность %
+    """
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-reasoner",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        answer = response.choices[0].message.content
+    except Exception as e:
+        answer = f"Ошибка DeepSeek: {e}"
+
+    await message.reply(answer)
+
+if __name__ == "__main__":
+    print("Бот запущен...")
+    executor.start_polling(dp)
